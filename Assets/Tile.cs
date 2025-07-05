@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class Tile : MonoBehaviour
 {
@@ -16,8 +17,24 @@ public class Tile : MonoBehaviour
 
     private void OnMouseDown()
     {
-        //Debug.Log($"Clicked on tile {x},{y}");
+        // Debug.Log($"Clicked on tile {x},{y}");
         // Sonra: Seçme ve takas iþlemi buraya eklenecek
         board.SelectTile(this);
+    }
+
+    public void AnimateFall(Vector2 targetPos, float fallSpeed = 5f)
+    {
+        StartCoroutine(SmoothMove(targetPos, fallSpeed));
+    }
+
+    IEnumerator SmoothMove(Vector2 targetPos, float speed)
+    {
+        while ((Vector2)transform.position != targetPos)
+        {
+            transform.position = Vector2.MoveTowards(transform.position, targetPos, speed * Time.deltaTime);
+            yield return null;
+        }
+
+        transform.position = targetPos; // garanti olsun
     }
 }

@@ -146,10 +146,36 @@ public class GameManager : MonoBehaviour
             yield return new WaitForSeconds(0.2f); // biraz boþluk
 
             CollapseBoard(); // ?? düþür
+
+            yield return new WaitForSeconds(0.2f);
+
+            RefillBoard(); // ?? yeni tile’lar gel
         }
         else
         {
             // Swap geri alýnýr
+        }
+    }
+
+    void RefillBoard()
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (grid[x, y] == null)
+                {
+                    GameObject prefab = GetSafeTile(x, y);
+                    GameObject tileObj = Instantiate(prefab, new Vector2(x, y + 1), Quaternion.identity); // 1 birim yukarýdan gelsin
+                    tileObj.transform.parent = this.transform;
+
+                    Tile tile = tileObj.GetComponent<Tile>();
+                    tile.Init(x, y, this);
+                    grid[x, y] = tile;
+
+                    tile.AnimateFall(new Vector2(x, y));
+                }
+            }
         }
     }
 
@@ -219,13 +245,18 @@ public class GameManager : MonoBehaviour
 
                 if (fallTo != y)
                 {
+                    // Tile'ý al
+                    Tile tile = grid[x, y];
+
                     // Grid güncelle
-                    grid[x, fallTo] = grid[x, y];
+                    grid[x, fallTo] = tile;
                     grid[x, y] = null;
 
-                    // Tile objesini güncelle
-                    grid[x, fallTo].y = fallTo;
-                    grid[x, fallTo].transform.position = new Vector2(x, fallTo);
+                    // Tile koordinatýný güncelle
+                    tile.y = fallTo;
+
+                    // ?? ANÝ ZIPLATMA YERÝNE: animasyonlu geçiþ
+                    tile.AnimateFall(new Vector2(x, fallTo), 5f); // hýz isteðe baðlý
                 }
             }
         }
