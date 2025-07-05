@@ -5,6 +5,8 @@ public class Tile : MonoBehaviour
 {
     public int x, y;
     public int tileType; // 0, 1, 2, 3 gibi prefab index'iyle eþleþen ID
+    public bool isMoving = false;
+
 
     private GameManager board;
 
@@ -29,12 +31,15 @@ public class Tile : MonoBehaviour
 
     IEnumerator SmoothMove(Vector2 targetPos, float speed)
     {
+        isMoving = true;
+
         while ((Vector2)transform.position != targetPos)
         {
             transform.position = Vector2.MoveTowards(transform.position, targetPos, speed * Time.deltaTime);
             yield return null;
         }
 
-        transform.position = targetPos; // garanti olsun
+        transform.position = targetPos;
+        isMoving = false;
     }
 }

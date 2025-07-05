@@ -147,9 +147,13 @@ public class GameManager : MonoBehaviour
 
             CollapseBoard(); // ?? düþür
 
-            yield return new WaitForSeconds(0.2f);
+            yield return StartCoroutine(WaitForGravity());
 
             RefillBoard(); // ?? yeni tile’lar gel
+
+            yield return new WaitForSeconds(0.2f);
+            
+            StartCoroutine(HandleMatches()); // ?? combo zincirini baþlat
         }
         else
         {
@@ -175,6 +179,72 @@ public class GameManager : MonoBehaviour
 
                     tile.AnimateFall(new Vector2(x, y));
                 }
+            }
+        }
+    }
+
+    IEnumerator WaitForGravity()
+    {
+        bool anyMoving;
+        do
+        {
+            anyMoving = false;
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    if (grid[x, y] != null && grid[x, y].isMoving)
+                    {
+                        anyMoving = true;
+                        break;
+                    }
+                }
+            }
+            yield return null;
+        } while (anyMoving);
+    }
+
+    List<Tile> CheckForMatches()
+    {
+        List<Tile> allMatches = new List<Tile>();
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (grid[x, y] != null)
+                {
+                    List<Tile> matches = GetMatchesAt(grid[x, y]);
+                    if (matches.Count >= 3)
+                        allMatches.AddRange(matches);
+                }
+            }
+        }
+
+        return allMatches.Distinct().ToList();
+    }
+
+    IEnumerator HandleMatches()
+    {
+        bool comboActive = true;
+
+        while (comboActive)
+        {
+            yield return new WaitForSeconds(0.2f);
+
+            List<Tile> matches = CheckForMatches();
+
+            if (matches.Count >= 3)
+            {
+                ClearMatches(matches);
+                yield return new WaitForSeconds(0.2f);
+                CollapseBoard();
+                yield return StartCoroutine(WaitForGravity());
+                RefillBoard();
+            }
+            else
+            {
+                comboActive = false; // eþleþme kalmadý, çýk
             }
         }
     }
