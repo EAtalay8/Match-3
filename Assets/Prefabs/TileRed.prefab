@@ -124,6 +124,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   x: 0
   y: 0
+  tileType: 1
 --- !u!1 &3721598112289757427
 GameObject:
   m_ObjectHideFlags: 0

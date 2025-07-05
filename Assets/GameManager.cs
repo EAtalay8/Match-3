@@ -1,5 +1,7 @@
-using System.Collections;
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 public class GameManager : MonoBehaviour
 {
@@ -23,22 +25,18 @@ public class GameManager : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
-                Vector2 pos = new Vector2(x, y);
-                GameObject tileObj = Instantiate(GetRandomTile(), pos, Quaternion.identity);
+                GameObject prefab = GetSafeTile(x, y); // ?? eþleþmesiz tile prefab'ý seç
+                GameObject tileObj = Instantiate(prefab, new Vector2(x, y), Quaternion.identity);
                 tileObj.transform.parent = this.transform;
                 tileObj.name = $"Tile {x},{y}";
 
                 Tile tile = tileObj.GetComponent<Tile>();
                 tile.Init(x, y, this);
+                // tileType artýk prefab'ýn içinden geliyor, dýþarýdan atanmaz
+
                 grid[x, y] = tile;
             }
         }
-    }
-
-    GameObject GetRandomTile()
-    {
-        int index = Random.Range(0, tilePrefabs.Length);
-        return tilePrefabs[index];
     }
 
     bool AreAdjacent(Tile a, Tile b)
@@ -65,6 +63,50 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    GameObject GetSafeTile(int x, int y)
+    {
+        List<GameObject> possiblePrefabs = new List<GameObject>(tilePrefabs);
+
+        // Soldaki 2 tile aynýysa
+        if (x >= 2)
+        {
+            Tile left1 = grid[x - 1, y];
+            Tile left2 = grid[x - 2, y];
+            if (left1 != null && left2 != null && left1.tileType == left2.tileType)
+            {
+                // Bu type'a sahip prefab'ý listeden çýkar
+                possiblePrefabs.RemoveAll(p => p.GetComponent<Tile>().tileType == left1.tileType);
+            }
+        }
+
+        // Alttaki 2 tile aynýysa
+        if (y >= 2)
+        {
+            Tile down1 = grid[x, y - 1];
+            Tile down2 = grid[x, y - 2];
+            if (down1 != null && down2 != null && down1.tileType == down2.tileType)
+            {
+                possiblePrefabs.RemoveAll(p => p.GetComponent<Tile>().tileType == down1.tileType);
+            }
+        }
+
+        // Rastgele güvenli prefab seç
+        int randomIndex = Random.Range(0, possiblePrefabs.Count);
+        return possiblePrefabs[randomIndex];
+    }
+        
+    void ClearMatches(List<Tile> matches)
+    {
+        foreach (Tile tile in matches)
+        {
+            // Grid'den kaldýr
+            grid[tile.x, tile.y] = null;
+
+            // Sahneden sil
+            Destroy(tile.gameObject);
+        }
+    }
+
     IEnumerator SwapTiles(Tile a, Tile b)
     {
         // Konumlarýný animasyonlu olarak deðiþtir (þimdilik anýnda)
@@ -86,8 +128,115 @@ public class GameManager : MonoBehaviour
         b.x = tempX;
         b.y = tempY;
 
-        // Buraya match kontrolü eklenecek
-        yield return null;
+        yield return new WaitForSeconds(0.1f);
+
+        // ?? Ýþte burada çaðrýlýyor:
+        List<Tile> matchesA = GetMatchesAt(a);
+        List<Tile> matchesB = GetMatchesAt(b);
+
+        List<Tile> allMatches = matchesA.Union(matchesB).Distinct().ToList();
+
+        Debug.Log($"Toplam eþleþen tile: {allMatches.Count}");
+
+        if (allMatches.Count >= 3)
+        {
+            Debug.Log("Match found!");
+            ClearMatches(allMatches);
+
+            yield return new WaitForSeconds(0.2f); // biraz boþluk
+
+            CollapseBoard(); // ?? düþür
+        }
+        else
+        {
+            // Swap geri alýnýr
+        }
+    }
+
+    List<Tile> GetMatchesAt(Tile currentTile)
+    {
+        List<Tile> horizontal = new List<Tile>();
+        List<Tile> vertical = new List<Tile>();
+
+        int type = currentTile.tileType;
+
+        // YATAY kontrol (sol-sað)
+        horizontal.Add(currentTile);
+
+        int x = currentTile.x - 1;
+        while (x >= 0 && grid[x, currentTile.y] != null && grid[x, currentTile.y].tileType == type)
+        {
+            horizontal.Add(grid[x, currentTile.y]);
+            x--;
+        }
+
+        x = currentTile.x + 1;
+        while (x < width && grid[x, currentTile.y] != null && grid[x, currentTile.y].tileType == type)
+        {
+            horizontal.Add(grid[x, currentTile.y]);
+            x++;
+        }
+
+        // DÝKEY kontrol (yukarý-aþaðý)
+        vertical.Add(currentTile);
+
+        int y = currentTile.y - 1;
+        while (y >= 0 && grid[currentTile.x, y] != null && grid[currentTile.x, y].tileType == type)
+        {
+            vertical.Add(grid[currentTile.x, y]);
+            y--;
+        }
+
+        y = currentTile.y + 1;
+        while (y < height && grid[currentTile.x, y] != null && grid[currentTile.x, y].tileType == type)
+        {
+            vertical.Add(grid[currentTile.x, y]);
+            y++;
+        }
+
+        // Eþleþmeleri birleþtir
+        List<Tile> matches = new List<Tile>();
+        if (horizontal.Count >= 3)
+            matches.AddRange(horizontal);
+
+        if (vertical.Count >= 3)
+            matches.AddRange(vertical);
+
+        return matches.Distinct().ToList();
+    }
+
+    void CollapseColumn(int x)
+    {
+        for (int y = 1; y < height; y++)
+        {
+            if (grid[x, y] != null)
+            {
+                int fallTo = y;
+                while (fallTo > 0 && grid[x, fallTo - 1] == null)
+                {
+                    fallTo--;
+                }
+
+                if (fallTo != y)
+                {
+                    // Grid güncelle
+                    grid[x, fallTo] = grid[x, y];
+                    grid[x, y] = null;
+
+                    // Tile objesini güncelle
+                    grid[x, fallTo].y = fallTo;
+                    grid[x, fallTo].transform.position = new Vector2(x, fallTo);
+                }
+            }
+        }
+    }
+
+    void CollapseBoard()
+    {
+        for (int x = 0; x < width; x++)
+        {
+            CollapseColumn(x);
+        }
     }
 
     void CenterCamera()
