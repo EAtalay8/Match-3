@@ -42,4 +42,18 @@ public class Tile : MonoBehaviour
         transform.position = targetPos;
         isMoving = false;
     }
+
+    public IEnumerator AnimateSwap(Vector2 targetPos, float speed = 8f)
+    {
+        isMoving = true;
+
+        while ((Vector2)transform.position != targetPos)
+        {
+            transform.position = Vector2.MoveTowards(transform.position, targetPos, speed * Time.deltaTime);
+            yield return null;
+        }
+
+        transform.position = targetPos;
+        isMoving = false;
+    }
 }

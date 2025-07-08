@@ -113,8 +113,13 @@ public class GameManager : MonoBehaviour
         Vector3 posA = a.transform.position;
         Vector3 posB = b.transform.position;
 
-        a.transform.position = posB;
-        b.transform.position = posA;
+        // ?? Ýkisini ayný anda çalýþtýr ve birlikte bekle
+        Coroutine moveA = StartCoroutine(a.AnimateSwap(posB));
+        Coroutine moveB = StartCoroutine(b.AnimateSwap(posA));
+
+        // Hepsi bitsin diye bekle
+        yield return moveA;
+        yield return moveB;
 
         // Grid dizisindeki yerlerini deðiþtir
         grid[a.x, a.y] = b;
@@ -157,7 +162,27 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            // Swap geri alýnýr
+            // ? Eþleþme yoksa swap geri alýnýr
+
+            // Swap geri al
+            //a.transform.position = posA;
+            //b.transform.position = posB;
+
+            StartCoroutine(a.AnimateSwap(posA));
+            yield return StartCoroutine(b.AnimateSwap(posB));
+
+
+            // Grid’i eski haline getir
+            grid[a.x, a.y] = b;
+            grid[b.x, b.y] = a;
+
+            // Koordinatlarý da geri al
+            tempX = a.x;
+            tempY = a.y;
+            a.x = b.x;
+            a.y = b.y;
+            b.x = tempX;
+            b.y = tempY;
         }
     }
 
